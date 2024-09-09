@@ -20,6 +20,8 @@ object):
                         # access returns a *copy* of the entry!
         del d[key]      # delete data stored at key (raises KeyError
                         # if no such key)
+                        # removing data with del() or .pop() does not
+                        # affect stored files in every case
         flag = key in d # true if the key exists
         list = d.keys() # a list of all existing keys (slow!)
 
@@ -117,7 +119,11 @@ class Shelf(collections.abc.MutableMapping):
         return value
 
     def __setitem__(self, key, value):
+        if key.encode(self.keyencoding) in self.dict.keys():
+            self.dict[key.encode(self.keyencoding)] = " " * len(self.dict[key.encode(self.keyencoding)])
         if self.writeback:
+            if key in self.cache.keys():
+                self.cache[key] = " " * len(self.cache[key])
             self.cache[key] = value
         f = BytesIO()
         p = Pickler(f, self._protocol)
@@ -125,8 +131,12 @@ class Shelf(collections.abc.MutableMapping):
         self.dict[key.encode(self.keyencoding)] = f.getvalue()
 
     def __delitem__(self, key):
+        if key.encode(self.keyencoding) in self.dict.keys():
+            self.dict[key.encode(self.keyencoding)] = " " * len(self.dict[key.encode(self.keyencoding)])
         del self.dict[key.encode(self.keyencoding)]
         try:
+            if key in self.cache.keys():
+                self.cache[key] = " " * len(self.cache[key])
             del self.cache[key]
         except KeyError:
             pass
